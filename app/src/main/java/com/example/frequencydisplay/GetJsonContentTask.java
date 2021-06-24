@@ -2,11 +2,15 @@ package com.example.frequencydisplay;
 
 import android.os.AsyncTask;
 import android.util.Log;
+import android.view.View;
 import android.webkit.HttpAuthHandler;
+import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.xml.sax.ext.DefaultHandler2;
 
@@ -26,21 +30,25 @@ import java.util.LinkedList;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLPeerUnverifiedException;
 
-public class GetJsonContentTask  extends AsyncTask <Void,Void,ArrayList> {
-    TextView date,  currentFrequecy,  lowFrequency,  startTime;
-
-    public GetJsonContentTask (TextView date, TextView currentFrequecy, TextView lowFrequency, TextView startTime) {
-        this.date=date;
-        this.currentFrequecy=currentFrequecy;
-        this.lowFrequency=lowFrequency;
-        this.startTime=startTime;
+public class GetJsonContentTask  extends AsyncTask <Void,Void,String> {
+    TextView timeStamp, currentFrequency,frequencyChange, percentageChange,openingFrequency,lowestFrequency, highestFrequency;
+    ProgressBar spinner;
+    public GetJsonContentTask (TextView timeStamp, TextView currentFrequency, TextView frequencyChange,  TextView percentageChange
+            , TextView openingFrequency, TextView lowestFrequency, TextView highestFrequency,ProgressBar spinner) {
+        this.timeStamp=timeStamp;
+        this.currentFrequency=currentFrequency;
+        this.frequencyChange=frequencyChange;
+        this.percentageChange=percentageChange;
+        this.openingFrequency=openingFrequency;
+        this.lowestFrequency=lowestFrequency;
+        this.highestFrequency=highestFrequency;
+        this.spinner=spinner;
 
     }
 
     @Override
-    protected ArrayList doInBackground(Void... voids) {
-        ArrayList <String>jsonContentArray=new <String >ArrayList();
-        String jsonString;
+    protected String doInBackground(Void... voids) {
+        String jsonString="";
         try {
             HttpsURLConnection connection=(HttpsURLConnection)new URL("https://api.tcngridinfo.com/api/Frequency/GetFrequency").openConnection();
             InputStream input=connection.getInputStream();
@@ -50,26 +58,39 @@ public class GetJsonContentTask  extends AsyncTask <Void,Void,ArrayList> {
             while ((line=reader.readLine()) !=null) {
                 sb.append(line+"\n");
             }
-
             jsonString= sb.toString();
-            JSONObject jsonObject=new JSONObject(jsonString);
-            jsonContentArray.add(0,jsonObject.getString("date"));
-            jsonContentArray.add(1,String.valueOf(jsonObject.getDouble("open")));
-            jsonContentArray.add(2,String.valueOf(jsonObject.getDouble("low")));
-            jsonContentArray.add(3,jsonObject.getString("creationTime"));
-        } catch (Exception e) {
+         } catch (Exception e) {
             Log.e(getClass().getSimpleName(),e.toString(),e);
         }
-        return  jsonContentArray;
+        return  jsonString;
     }
 
         @Override
-    protected void onPostExecute(ArrayList list) {
-        super.onPostExecute(list);
-        date.setText( list.get(0).toString());
-        currentFrequecy.setText(list.get(1).toString());
-        lowFrequency.setText(list.get(2).toString());
-        startTime.setText(list.get(3).toString());
+    protected void onPostExecute(String response) {
+        super.onPostExecute(response);
+            JSONObject jsonObject= null;
+            try {
+                jsonObject = new JSONObject(response);
+
+                String timeStampString =jsonObject.getString("date");  //object to take unfoormated data and time
+                timeStampString=timeStampString.replace('T',' '); //remove T in timestamp and change to space
+                timeStampString=timeStampString.substring(0,timeStampString.indexOf('.'));//remove additional milliseconds after main seconds
+
+                //set values in UI
+                timeStamp.setText(timeStampString);
+                currentFrequency.setText(jsonObject.getString("min"));
+                frequencyChange.setText(jsonObject.getString("change")+"Hz");
+                percentageChange.setText(jsonObject.getString("percent")+"%");
+                openingFrequency.setText(jsonObject.getString("open")+"Hz");
+                lowestFrequency.setText(jsonObject.getString("low")+"Hz");
+                highestFrequency.setText(jsonObject.getString("high")+"Hz");
+                spinner.setVisibility(View.INVISIBLE);//hide spinner
+
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
     }
 
 }
