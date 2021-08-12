@@ -47,6 +47,41 @@
             android:inputType="number|numberDecimal" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <CheckBox
+        android:id="@+id/alarmCheckbox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Enable Alarm" />
+
+    <TextView
+        android:id="@+id/textView7"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="Alarm Type" />
+
+    <RadioGroup
+        android:id="@+id/alarmTypeRadioGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:checkedButton="@id/soundRadio"
+        android:orientation="horizontal">
+
+        <RadioButton
+            android:id="@+id/soundRadio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Sound" />
+
+        <RadioButton
+            android:id="@+id/vibrationRadio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Vibration" />
+    </RadioGroup>
+
     <Button
         android:id="@+id/saveButton"
         android:layout_width="match_parent"

@@ -1,12 +1,17 @@
 package com.example.frequencydisplay;
 
+import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Vibrator;
 import android.util.Log;
 import android.view.View;
 import android.webkit.HttpAuthHandler;
@@ -89,7 +94,6 @@ public class GetJsonContentTask  extends AsyncTask <Void,Void,String> {
             try {
                 jsonObject = new JSONObject(response);
 
-
                 if(context==null) {// it means it was called by the main activity
                     //format time
                     String timeStampString = jsonObject.getString("date");  //object to take unfoormated data and time
@@ -118,20 +122,69 @@ public class GetJsonContentTask  extends AsyncTask <Void,Void,String> {
                     AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
                     ComponentName widget = new ComponentName( context, GridWidget.class );
                     views.setTextViewText(R.id.appwidget_text, jsonObject.getString("min")+"Hz");
+
+                    Intent intent = new Intent(context, getClass()); // An intent directed at the current class (the "self").
+                    intent.setAction("click");
+                    views.setOnClickPendingIntent(R.id.widgetLayout, PendingIntent.getBroadcast(context, 0, intent, 0));
                     appWidgetManager.updateAppWidget(widget, views);
+
+                    Uri alarm = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+                    Ringtone r ;//
+                    r = RingtoneManager.getRingtone(context,alarm);
+
 
                     //check if frequency is lower than expected
                     GridDataClass dataClass = new GridDataClass();
                     double frequecy= Double.parseDouble(jsonObject.getString("min"));
                     double minimumAllowableFrequency = Double.parseDouble(dataClass.getData(context,"minimumAllowableFrequency"));
                     double maximumAllowableFrequencyEdit = Double.parseDouble(dataClass.getData(context,"maximumAllowableFrequencyEdit"));
-                    if(minimumAllowableFrequency>frequecy || frequecy>maximumAllowableFrequencyEdit){
-                        Uri alarm = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-                        Ringtone r ;//
-                        r = RingtoneManager.getRingtone(context,alarm);
-                        r.play();
-                        Toast.makeText(context, "Abnormal Grid Frequency!", Toast.LENGTH_SHORT).show();
 
+                    if(minimumAllowableFrequency>frequecy || frequecy>maximumAllowableFrequencyEdit){
+                       //abnormal frequency detected.
+                        if(dataClass.getData(context,"alarmCheckbox").contains("false")){
+                            return; //alarm is disabled
+                        }
+
+                        double alarmCount=Double.parseDouble(dataClass.getData(context,"alarmCount"));
+                        if(alarmCount>2){
+                            return; //do not ring alarm again after 3 times
+                        }
+
+                        //increment alarm by one
+                        dataClass.saveData(context,"alarmCount",(alarmCount+1)+"");
+
+                        //choose between vibration and sount alarm
+                        if(dataClass.getData(context,"alarmType").contains("sound")) {
+                        r.play();
+                            final int[] count = {1};
+                             Handler handler = new Handler(Looper.getMainLooper());
+                            Runnable runnable = new Runnable() {
+                                @Override
+                                public void run() {
+                                    //stop alarm after 30seconds
+                                    count[0]++;
+                                    if(count[0] <30 && Double.parseDouble(dataClass.getData(context,"alarmCount"))>0)
+                                    handler.postDelayed(this, 1000);
+                                    else {
+                                        r.stop();
+                                    }
+                                }
+                            };
+
+                            handler.postDelayed(runnable, 1000);
+                        }
+
+                        else {// vibration alarm
+                            Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+                            long[] pattern = { 0, 100, 500, 100, 500, 100, 500, 100, 500, 100, 500};
+                            vibrator.vibrate(pattern , -1);
+                        }
+
+                        Toast.makeText(context, "Abnormal Grid Frequency!", Toast.LENGTH_SHORT).show();
+                    }
+                    else {
+                        //reset alarm
+                        dataClass.saveData(context,"alarmCount","0");
                     }
                 }
 
